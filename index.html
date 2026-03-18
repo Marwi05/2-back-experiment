@@ -8,7 +8,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
-            background-color: #000; /* black blank interval */
+            background-color: #ffffff; /* white blank interval */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,8 +17,8 @@
 
         #stimulus {
             font-size: 100px;
-            font-weight: 900;
-            color: white;
+            font-weight: 700;
+            color: black;
             height: 120px;
             display: flex;
             justify-content: center;
@@ -98,7 +98,7 @@ let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 let sequence = [];
 let currentIndex = 0;
 let maxTrials = 25;
-let totalTrialTime = 3000; // 500ms stimulus + 2500ms ISI
+let totalTrialTime = 2000; // 500ms stimulus + 2500ms ISI
 
 let subjectID = "";
 let trialStartTime = 0;
@@ -149,8 +149,35 @@ function startTask() {
     misses = 0;
     falseAlarms = 0;
 
+    let numTargets = Math.floor(Math.random() * 6) + 3; // 3 to 8 targets
+    let targetIndices = [];
+
+    // Generate target indices with at least 1 trial gap
+    while (targetIndices.length < numTargets) {
+        let idx = Math.floor(Math.random() * (maxTrials - 2)) + 2; // indices 2 to maxTrials-1
+        // Ensure no consecutive targets
+        if (!targetIndices.includes(idx) &&
+            !targetIndices.includes(idx-1) &&
+            !targetIndices.includes(idx+1)) {
+            targetIndices.push(idx);
+        }
+    }
+
+    targetIndices.sort((a,b)=>a-b);
+
+    // Generate sequence
     for (let i=0; i<maxTrials; i++){
-        sequence.push(letters[Math.floor(Math.random()*letters.length)]);
+        if (targetIndices.includes(i)) {
+            // Make this letter the same as 2-back
+            sequence[i] = sequence[i-2];
+        } else {
+            // Pick a random letter that is NOT equal to 2-back to avoid accidental matches
+            let newLetter;
+            do {
+                newLetter = letters[Math.floor(Math.random()*letters.length)];
+            } while (i >= 2 && newLetter === sequence[i-2]);
+            sequence[i] = newLetter;
+        }
     }
 
     document.addEventListener("keydown", handleKey);
@@ -219,6 +246,7 @@ function endBlock() {
             <p>Subject: ${subjectID}</p>
             <p>Target matches: ${targetMatches} | Misses: ${misses} | False alarms: ${falseAlarms}</p>
             <p><em>Saving data...</em></p>
+            <button onclick="downloadCSV()">Download CSV</button>
         </div>
     `;
 
@@ -238,11 +266,32 @@ function sendDataToGoogleSheets() {
         headers:{"Content-Type":"text/plain;charset=utf-8"}
     })
     .then(response=>{
-        document.getElementById("feedback").innerHTML += `<p style="color:green;"><strong>✅ Data saved!</strong></p>`;
+        // Update feedback text, keep CSV button visible
+        document.querySelector("#feedback p em").innerText = "Data saved.";
     })
     .catch(error=>{
+        // If error, still keep CSV button visible
+        document.querySelector("#feedback p em").innerText = "Error saving data.";
+    });
+}
+
+// --- Google Sheets ---
+function sendDataToGoogleSheets() {
+    let finalData = results.map((row,index)=>{
+        if (index===0) return ["Condition",...row];
+        return [conditionName,...row];
+    });
+
+    fetch(googleWebAppUrl,{
+        method:"POST",
+        body:JSON.stringify(finalData),
+        headers:{"Content-Type":"text/plain;charset=utf-8"}
+    })
+    .then(response=>{
+        document.getElementById("feedback").innerHTML += `<p style="color:green; text-align:center;"><strong>Data saved!</strong></p>`;    })
+    .catch(error=>{
         document.getElementById("feedback").innerHTML += `
-            <p style="color:red;"><strong>⚠️ Error saving data.</strong></p>
+            <p style="color:red;  text-align:center;"><strong>Error saving data.</strong></p>
             <button onclick="downloadCSV()">Download CSV</button>
         `;
     });
