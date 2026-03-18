@@ -13,8 +13,6 @@
             font-size: 80px;
             font-weight: bold;
             margin: 40px;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
         }
         #feedback {
             font-size: 24px;
@@ -57,7 +55,7 @@
 </div>
 
 <!-- Instructions Screen -->
-<div id="instructions" class="screen" style="display:none;">
+<div id="instructions" class="screen">
     <h1>Welcome to the 2-Back Test</h1>
     <p>You will see a sequence of letters appear one at a time.</p>
     <p>Press the <strong>M key</strong> whenever the current letter matches the one from 2 steps earlier.</p>
@@ -132,7 +130,7 @@ function startTask() {
     showNext();
 }
 
-// --- SHOW NEXT LETTER WITH FADE IN/OUT AND BLANK INTERVAL ---
+// --- SHOW NEXT LETTER ---
 function showNext() {
     if (currentIndex >= maxTrials) {
         endBlock();
@@ -145,24 +143,21 @@ function showNext() {
     let currentLetter = sequence[currentIndex];
     let stimulusDiv = document.getElementById("stimulus");
 
-    // FADE IN
-    stimulusDiv.style.opacity = 0;
+    // SHOW LETTER FOR 500ms
     stimulusDiv.innerText = currentLetter;
-    setTimeout(()=>{ stimulusDiv.style.opacity = 1; }, 50);
-
     trialStartTime = Date.now();
 
-    // FADE OUT AFTER 1.2s
-    setTimeout(()=>{
-        stimulusDiv.style.opacity = 0;
-    }, 1200);
+    setTimeout(() => {
+        // CLEAR LETTER AFTER 500ms
+        stimulusDiv.innerText = "";
+    }, 500);
 
-    // NEXT LETTER AFTER 2s (allows 0.8s blank interval)
-    setTimeout(()=>{
+    // LOG TRIAL AND MOVE TO NEXT AFTER 3,000ms TOTAL
+    setTimeout(() => {
         logTrial();
         currentIndex++;
         showNext();
-    }, 2000);
+    }, 3000);
 }
 
 // --- KEY RESPONSE ---
@@ -178,7 +173,7 @@ function logTrial() {
 
     if (isMatch && userPressed) targetMatches++;
     if (isMatch && !userPressed) misses++;
-    if (!isMatch && userPressed && !isMatch) falseAlarms++;
+    if (!isMatch && userPressed) falseAlarms++;
 
     let rt = userPressed ? Date.now() - trialStartTime : "";
 
