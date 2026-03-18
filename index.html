@@ -102,7 +102,7 @@ let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 let sequence = [];
 let currentIndex = 0;
 let maxTrials = 25;
-let trialDuration = 2000; // Changed from 3000 to 2000ms
+let trialDuration = 1500; 
 
 let subjectID = "";
 let trialStartTime = 0;
@@ -128,7 +128,7 @@ document.getElementById("to-instructions").addEventListener("click", () => {
     subjectID = input;
     
     subjectScreen.style.display = "none";
-    instructionsScreen.style.display = "block";
+    // instructionsScreen.style.display = "block";
 
     document.addEventListener("keydown", startFromInstructions);
 });
