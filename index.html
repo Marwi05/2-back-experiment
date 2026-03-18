@@ -3,53 +3,75 @@
 <head>
     <title>2-Back Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 80px;
+        /* Centering the entire experiment in the viewport */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
             background-color: #f2f2f2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
         }
+
         #stimulus {
-            font-size: 80px;
-            font-weight: bold;
-            margin: 40px;
-            height: 100px; /* Maintains space even when empty */
+            font-size: 100px;
+            font-weight: 900;
+            color: black; /* Changed from gray to black */
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+
         #feedback {
             font-size: 24px;
             color: green;
             margin-top: 20px;
+            position: absolute;
+            bottom: 20%;
         }
         
-        /* The Fix: Hide all screens by default */
+        /* Ensure instructions are HIDDEN on start */
         .screen {
-            display: none;
+            display: none; 
             font-size: 20px;
-            margin: 20px auto;
             background-color: #fff;
-            padding: 30px;
+            padding: 40px;
             border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: fit-content;
             max-width: 600px;
+            text-align: center;
+        }
+
+        /* Show only the subject screen initially */
+        #subject-screen {
+            display: block; 
         }
 
         input[type="text"] {
             font-size: 18px;
-            padding: 8px;
-            width: 200px;
-            margin-bottom: 10px;
+            padding: 10px;
+            width: 250px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
+
         button {
             font-size: 18px;
-            padding: 8px 20px;
-            margin-top: 15px;
+            padding: 10px 25px;
             cursor: pointer;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 4px;
+            transition: background 0.3s;
         }
+
         button:hover {
             background-color: #45a049;
         }
@@ -57,7 +79,7 @@
 </head>
 <body>
 
-<div id="subject-screen" class="screen" style="display:block;">
+<div id="subject-screen" class="screen">
     <h2>Enter Subject ID</h2>
     <input type="text" id="subject-input" placeholder="sub-100">
     <br>
@@ -65,10 +87,11 @@
 </div>
 
 <div id="instructions" class="screen">
-    <h1>Welcome to the 2-Back Test</h1>
-    <p>You will see a sequence of letters appear one at a time.</p>
-    <p>Press the <strong>M key</strong> whenever the current letter matches the one from 2 steps earlier.</p>
-    <p>Press <strong>SPACE BAR</strong> to start the experiment.</p>
+    <h1>2-Back Test</h1>
+    <p>Letters will appear one at a time.</p>
+    <p>Press <strong>"M"</strong> if the current letter matches the one from <strong>2 steps ago</strong>.</p>
+    <br>
+    <p>Press <strong>SPACE BAR</strong> to start.</p>
 </div>
 
 <div id="stimulus"></div>
@@ -79,22 +102,20 @@ let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 let sequence = [];
 let currentIndex = 0;
 let maxTrials = 25;
+let trialDuration = 2000; // Changed from 3000 to 2000ms
 
 let subjectID = "";
 let trialStartTime = 0;
 let results = [["Subject","Trial","Letter","IsMatch","UserPressed","Correct","RT"]];
 let userPressed = false;
 
-// Stats
 let targetMatches = 0;
 let misses = 0;
 let falseAlarms = 0;
 
-// Google Sheets Configuration
 let conditionName = "2-Back_Letters";
 let googleWebAppUrl = "YOUR_GOOGLE_WEB_APP_URL_HERE";
 
-// --- SCREEN NAVIGATION ---
 const subjectScreen = document.getElementById("subject-screen");
 const instructionsScreen = document.getElementById("instructions");
 
@@ -106,11 +127,9 @@ document.getElementById("to-instructions").addEventListener("click", () => {
     }
     subjectID = input;
     
-    // Switch screens
     subjectScreen.style.display = "none";
     instructionsScreen.style.display = "block";
 
-    // Wait for SPACE to start experiment
     document.addEventListener("keydown", startFromInstructions);
 });
 
@@ -123,16 +142,11 @@ function startFromInstructions(e) {
     }
 }
 
-// --- TASK LOGIC ---
 function startTask() {
     sequence = [];
     currentIndex = 0;
     results = [["Subject","Trial","Letter","IsMatch","UserPressed","Correct","RT"]];
-    targetMatches = 0;
-    misses = 0;
-    falseAlarms = 0;
-
-    // Generate sequence
+    
     for (let i=0; i<maxTrials; i++){
         sequence.push(letters[Math.floor(Math.random()*letters.length)]);
     }
@@ -153,7 +167,6 @@ function showNext() {
     let currentLetter = sequence[currentIndex];
     let stimulusDiv = document.getElementById("stimulus");
 
-    // Show letter
     stimulusDiv.innerText = currentLetter;
     trialStartTime = Date.now();
 
@@ -162,12 +175,12 @@ function showNext() {
         stimulusDiv.innerText = "";
     }, 500);
 
-    // Wait for response window (3 seconds total per trial)
+    // Trial timing updated to 2 seconds total
     setTimeout(() => {
         logTrial();
         currentIndex++;
         showNext();
-    }, 3000);
+    }, trialDuration);
 }
 
 function handleKey(e) {
@@ -187,15 +200,7 @@ function logTrial() {
 
     let rt = userPressed ? Date.now() - trialStartTime : "";
 
-    results.push([
-        subjectID,
-        currentIndex,
-        currentLetter,
-        isMatch,
-        userPressed,
-        correct,
-        rt
-    ]);
+    results.push([subjectID, currentIndex, currentLetter, isMatch, userPressed, correct, rt]);
 }
 
 function endBlock() {
@@ -206,7 +211,6 @@ function endBlock() {
         <div class="screen" style="display:block;">
             <h3>Block Complete</h3>
             <p>Subject: ${subjectID}</p>
-            <p>Trials: ${maxTrials}</p>
             <p>Target matches: ${targetMatches} | Misses: ${misses} | False alarms: ${falseAlarms}</p>
             <p><em>Saving data...</em></p>
         </div>
@@ -227,13 +231,12 @@ function sendDataToGoogleSheets() {
         headers:{"Content-Type":"text/plain;charset=utf-8"}
     })
     .then(response=>{
-        document.getElementById("feedback").innerHTML += `<p style="color:green;"><strong>✅ Data saved successfully!</strong></p>`;
+        document.getElementById("feedback").innerHTML += `<p style="color:green;"><strong>✅ Data saved!</strong></p>`;
     })
     .catch(error=>{
-        console.error("Error:",error);
         document.getElementById("feedback").innerHTML += `
-            <p style="color:red;"><strong>⚠️ Error saving data.</strong></p>
-            <button onclick="downloadCSV()">Download CSV Manually</button>
+            <p style="color:red;"><strong>⚠️ Error.</strong></p>
+            <button onclick="downloadCSV()">Download CSV</button>
         `;
     });
 }
