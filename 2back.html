@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>2-Back Test</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin-top: 100px;
+        }
+        #stimulus {
+            font-size: 80px;
+            margin: 40px;
+        }
+        #feedback {
+            font-size: 24px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<h1>2-Back Test</h1>
+
+<input type="text" id="subject" placeholder="Enter Subject ID">
+<br><br>
+<button onclick="startTask()">Start</button>
+
+<div id="stimulus"></div>
+<div id="feedback"></div>
+
+<script>
+let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+let sequence = [];
+let currentIndex = 0;
+let maxTrials = 20;
+let interval = 2000;
+
+let subjectID = "";
+let trialStartTime = 0;
+
+let results = [
+    ["Subject", "Trial", "Letter", "IsMatch", "UserPressed", "Correct", "RT"]
+];
+
+let userPressed = false;
+
+function startTask() {
+    subjectID = document.getElementById("subject").value;
+    if (!subjectID) {
+        alert("Enter Subject ID");
+        return;
+    }
+
+    sequence = [];
+    currentIndex = 0;
+
+    for (let i = 0; i < maxTrials; i++) {
+        sequence.push(letters[Math.floor(Math.random() * letters.length)]);
+    }
+
+    document.addEventListener("keydown", handleKey);
+    showNext();
+}
+
+function showNext() {
+    if (currentIndex >= maxTrials) {
+        endTask();
+        return;
+    }
+
+    userPressed = false;
+    document.getElementById("feedback").innerText = "";
+
+    let currentLetter = sequence[currentIndex];
+    document.getElementById("stimulus").innerText = currentLetter;
+
+    trialStartTime = Date.now();
+
+    setTimeout(() => {
+        logTrial();
+        currentIndex++;
+        showNext();
+    }, interval);
+}
+
+function handleKey(e) {
+    if (e.code === "Space") {
+        e.preventDefault(); // ✅ fixes speed issue
+        userPressed = true;
+        document.getElementById("feedback").innerText = "Registered";
+    }
+}
+
+function logTrial() {
+    let currentLetter = sequence[currentIndex];
+
+    let isMatch = false;
+    if (currentIndex >= 2) {
+        isMatch = currentLetter === sequence[currentIndex - 2];
+    }
+
+    let correct = (isMatch && userPressed) || (!isMatch && !userPressed);
+
+    let rt = userPressed ? Date.now() - trialStartTime : "";
+
+    results.push([
+        subjectID,
+        currentIndex,
+        currentLetter,
+        isMatch,
+        userPressed,
+        correct,
+        rt
+    ]);
+}
+
+function endTask() {
+    document.removeEventListener("keydown", handleKey);
+
+    document.getElementById("stimulus").innerText = "DONE";
+    document.getElementById("feedback").innerText = "Task Complete";
+
+    console.log(results);
+
+    sendToGoogleSheets();
+}
+
+function sendToGoogleSheets() {
+
+    let googleURL = "https://script.google.com/macros/s/AKfycbyI6nIExneBPO8ZGX1eMQ2OWR1OqW3wA_5qiKnbN5R-SoHV2X-hqxNZluP5Pzz-jWpVGA/exec";
+
+    fetch(googleURL, {
+        method: "POST",
+        body: JSON.stringify(results),
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        }
+    })
+    .then(() => {
+        document.getElementById("feedback").innerText = "✅ Data Saved!";
+    })
+    .catch(() => {
+        document.getElementById("feedback").innerText = "⚠️ Error saving data";
+    });
+}
+
+function downloadCSV() {
+    let csvContent = "data:text/csv;charset=utf-8," +
+        results.map(e => e.join(",")).join("\n");
+
+    let link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", subjectID + "_results.csv");
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+
+</body>
+</html>
