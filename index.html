@@ -3,42 +3,39 @@
 <head>
     <title>2-Back Test</title>
     <style>
-        /* Centering the entire experiment in the viewport */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #f2f2f2;
+            font-family: Arial, sans-serif;
+            background-color: #000; /* black blank interval */
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
+            flex-direction: column;
         }
 
         #stimulus {
             font-size: 100px;
             font-weight: 900;
-            color: black; /* Changed from gray to black */
+            color: white;
             height: 120px;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
         }
 
         #feedback {
             font-size: 24px;
-            color: green;
+            color: #79bf7d;
             margin-top: 20px;
-            position: absolute;
-            bottom: 20%;
         }
-        
-        /* Ensure instructions are HIDDEN on start */
+
         .screen {
             display: none; 
             font-size: 20px;
             background-color: #fff;
+            color: #000;
             padding: 40px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -47,7 +44,6 @@
             text-align: center;
         }
 
-        /* Show only the subject screen initially */
         #subject-screen {
             display: block; 
         }
@@ -65,7 +61,7 @@
             font-size: 18px;
             padding: 10px 25px;
             cursor: pointer;
-            background-color: #4CAF50;
+            background-color: #ccc;
             color: white;
             border: none;
             border-radius: 4px;
@@ -73,7 +69,7 @@
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #79bf7d;
         }
     </style>
 </head>
@@ -102,7 +98,7 @@ let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 let sequence = [];
 let currentIndex = 0;
 let maxTrials = 25;
-let trialDuration = 2000; 
+let totalTrialTime = 3000; // 500ms stimulus + 2500ms ISI
 
 let subjectID = "";
 let trialStartTime = 0;
@@ -114,11 +110,13 @@ let misses = 0;
 let falseAlarms = 0;
 
 let conditionName = "2-Back_Letters";
-let googleWebAppUrl = "YOUR_GOOGLE_WEB_APP_URL_HERE";
+let googleWebAppUrl = "https://script.google.com/macros/s/AKfycbyI6nIExneBPO8ZGX1eMQ2OWR1OqW3wA_5qiKnbN5R-SoHV2X-hqxNZluP5Pzz-jWpVGA/exec";
 
 const subjectScreen = document.getElementById("subject-screen");
 const instructionsScreen = document.getElementById("instructions");
+const stimulusDiv = document.getElementById("stimulus");
 
+// --- Screen Navigation ---
 document.getElementById("to-instructions").addEventListener("click", () => {
     let input = document.getElementById("subject-input").value.trim();
     if (!input) {
@@ -126,9 +124,9 @@ document.getElementById("to-instructions").addEventListener("click", () => {
         return;
     }
     subjectID = input;
-    
-    instructionsScreen.style.display = "block";
+
     subjectScreen.style.display = "none";
+    instructionsScreen.style.display = "block";
 
     document.addEventListener("keydown", startFromInstructions);
 });
@@ -142,11 +140,15 @@ function startFromInstructions(e) {
     }
 }
 
+// --- Task ---
 function startTask() {
     sequence = [];
     currentIndex = 0;
     results = [["Subject","Trial","Letter","IsMatch","UserPressed","Correct","RT"]];
-    
+    targetMatches = 0;
+    misses = 0;
+    falseAlarms = 0;
+
     for (let i=0; i<maxTrials; i++){
         sequence.push(letters[Math.floor(Math.random()*letters.length)]);
     }
@@ -155,6 +157,7 @@ function startTask() {
     showNext();
 }
 
+// --- Show next trial ---
 function showNext() {
     if (currentIndex >= maxTrials) {
         endBlock();
@@ -163,32 +166,33 @@ function showNext() {
 
     userPressed = false;
     document.getElementById("feedback").innerText = "";
+    document.body.style.backgroundColor = "#FFFFFF"; // white blank screen
 
     let currentLetter = sequence[currentIndex];
-    let stimulusDiv = document.getElementById("stimulus");
-
     stimulusDiv.innerText = currentLetter;
     trialStartTime = Date.now();
 
-    // Flash letter for 500ms
+    // Remove letter after 500ms
     setTimeout(() => {
         stimulusDiv.innerText = "";
     }, 500);
 
-    // Trial timing updated to 2 seconds total
+    // Move to next trial after totalTrialTime
     setTimeout(() => {
         logTrial();
         currentIndex++;
         showNext();
-    }, trialDuration);
+    }, totalTrialTime);
 }
 
+// --- Handle keypress ---
 function handleKey(e) {
     if (e.code === "KeyM") {
         userPressed = true;
     }
 }
 
+// --- Log trial ---
 function logTrial() {
     let currentLetter = sequence[currentIndex];
     let isMatch = currentIndex >= 2 && currentLetter === sequence[currentIndex-2];
@@ -203,9 +207,11 @@ function logTrial() {
     results.push([subjectID, currentIndex, currentLetter, isMatch, userPressed, correct, rt]);
 }
 
+// --- End block ---
 function endBlock() {
     document.removeEventListener("keydown", handleKey);
-    document.getElementById("stimulus").innerText = "";
+    stimulusDiv.innerText = "";
+    document.body.style.backgroundColor = "#f2f2f2"; // reset background
 
     document.getElementById("feedback").innerHTML = `
         <div class="screen" style="display:block;">
@@ -219,6 +225,7 @@ function endBlock() {
     sendDataToGoogleSheets();
 }
 
+// --- Google Sheets ---
 function sendDataToGoogleSheets() {
     let finalData = results.map((row,index)=>{
         if (index===0) return ["Condition",...row];
@@ -235,12 +242,13 @@ function sendDataToGoogleSheets() {
     })
     .catch(error=>{
         document.getElementById("feedback").innerHTML += `
-            <p style="color:red;"><strong>⚠️ Error.</strong></p>
+            <p style="color:red;"><strong>⚠️ Error saving data.</strong></p>
             <button onclick="downloadCSV()">Download CSV</button>
         `;
     });
 }
 
+// --- CSV fallback ---
 function downloadCSV() {
     let csvContent = "data:text/csv;charset=utf-8," + results.map(e=>e.join(",")).join("\n");
     let link = document.createElement("a");
